@@ -1,266 +1,380 @@
 package terrails.healthoverlay;
 
+import com.google.common.collect.Lists;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.platform.GlStateManager;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.AbstractGui;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.potion.Effects;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.text.Color;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.gui.ForgeIngameGui;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import terrails.healthoverlay.heart.ColoredHeart;
+import terrails.healthoverlay.heart.HeartIcon;
 
-import java.util.Random;
+import java.util.*;
 
 @Mod.EventBusSubscriber(value = Dist.CLIENT, modid = HealthOverlay.MOD_ID)
 public class HealthRenderer {
 
-    private static final ResourceLocation HEALTH_ICONS_LOCATION = new ResourceLocation("healthoverlay:textures/health.png");
-    private static final ResourceLocation ABSORPTION_ICONS_LOCATION = new ResourceLocation("healthoverlay:textures/absorption.png");
-    private static final ResourceLocation HALF_HEART_ICONS_LOCATION = new ResourceLocation("healthoverlay:textures/half_heart.png");
-
-    private static final Minecraft client = Minecraft.getInstance();
     private static final Random random = new Random();
 
-    private static int prevHealth, health;
-    private static long prevSystemTime, healthTicks;
+    private static long prevSystemTime, nextHealthTicks;
+    private static int previousHealth, previousMaxHealth, previousAbsorption, previousEffect;
+
+    private static List<HeartIcon> hearts = Lists.newArrayList();
 
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void render(RenderGameOverlayEvent.Pre event) {
         MatrixStack matrixStack = event.getMatrixStack();
-        Entity renderEntity = HealthRenderer.client.getCameraEntity();
+        Entity renderEntity = Minecraft.getInstance().getCameraEntity();
         if (event.getType() != RenderGameOverlayEvent.ElementType.HEALTH || !(renderEntity instanceof PlayerEntity) || event.isCanceled()
                 || HealthOverlay.healthColors.length == 0 || HealthOverlay.absorptionColors.length == 0) {
             return;
         }
         PlayerEntity player = (PlayerEntity) renderEntity;
-        int ticks = HealthRenderer.client.gui.getGuiTicks();
+        int ticks = Minecraft.getInstance().gui.getGuiTicks();
 
         int currentHealth = MathHelper.ceil(player.getHealth());
-        boolean highlight = HealthRenderer.healthTicks > (long) ticks && (HealthRenderer.healthTicks - (long) ticks) / 3L % 2L == 1L;
+        int maxHealth = MathHelper.ceil(player.getMaxHealth());
+        int absorption = MathHelper.ceil(player.getAbsorptionAmount());
+        int currentEffect = player.hasEffect(Effects.POISON) ? (player.hasEffect(Effects.WITHER) ? 1 : 2) : (player.hasEffect(Effects.WITHER) ? 1 : 0);
+
+        boolean highlight = HealthRenderer.nextHealthTicks > (long) ticks && (HealthRenderer.nextHealthTicks - (long) ticks) / 3L % 2L == 1L;
         long systemTime = Util.getMillis();
-        if (currentHealth < HealthRenderer.health && player.invulnerableTime > 0) {
+        if (currentHealth < HealthRenderer.previousHealth && player.invulnerableTime > 0) {
             HealthRenderer.prevSystemTime = systemTime;
-            HealthRenderer.healthTicks = (ticks + 20);
-        } else if (currentHealth > HealthRenderer.health && player.invulnerableTime > 0) {
+            HealthRenderer.nextHealthTicks = (ticks + 20);
+        } else if (currentHealth > HealthRenderer.previousHealth /*|| (HealthOverlay.absorptionOverHealth && absorption > HealthRenderer.previousAbsorption)) */&& player.invulnerableTime > 0) {
             HealthRenderer.prevSystemTime = systemTime;
-            HealthRenderer.healthTicks = (ticks + 10);
+            HealthRenderer.nextHealthTicks = (ticks + 10);
         }
 
         if (systemTime - HealthRenderer.prevSystemTime > 1000L) {
-            HealthRenderer.health = currentHealth;
-            HealthRenderer.prevHealth = currentHealth;
             HealthRenderer.prevSystemTime = systemTime;
         }
 
-        HealthRenderer.health = currentHealth;
-        int previousHealth = HealthRenderer.prevHealth;
         HealthRenderer.random.setSeed(ticks * 312871L);
-        int xPos = HealthRenderer.client.getWindow().getGuiScaledWidth() / 2 - 91;
-        int yPos = HealthRenderer.client.getWindow().getGuiScaledHeight() - 39;
-        float maxHealth = player.getMaxHealth();
-        int absorption = MathHelper.ceil(player.getAbsorptionAmount());
 
-        currentHealth = Math.min(currentHealth, 20);
-        previousHealth = Math.min(previousHealth, 20);
-        maxHealth = Math.min(maxHealth, 20);
-        absorption = Math.min(absorption, 20);
-        int absorptionCount = absorption;
+        int xPos = Minecraft.getInstance().getWindow().getGuiScaledWidth() / 2 - 91;
+        int yPos = Minecraft.getInstance().getWindow().getGuiScaledHeight() - 39;
 
-        int rowHeight = 10;
-        int regenHealth = -1;
+        final int rowHeight = 10;
         // Armor gets rendered in the same row as health if this isn't set
-        ForgeIngameGui.left_height += rowHeight + (absorption > 0 ? 10 : 0);
+        ForgeIngameGui.left_height += rowHeight + (Math.min(MathHelper.ceil(player.getAbsorptionAmount()), 20) > 0 && !HealthOverlay.absorptionOverHealth ? rowHeight : 0);
+
+        int regenHealth = -1;
         if (player.hasEffect(Effects.REGENERATION)) {
-            regenHealth = ticks % MathHelper.ceil(maxHealth + 5.0F);
+            regenHealth = ticks % MathHelper.ceil(Math.min(player.getMaxHealth(), 20) + 5.0F);
         }
 
-        int effectOffset = 16;
-        if (player.hasEffect(Effects.POISON)) {
-            effectOffset += 36;
-        } else if (player.hasEffect(Effects.WITHER)) {
-            effectOffset += 72;
+        if (HealthRenderer.previousHealth != currentHealth || HealthRenderer.previousMaxHealth != maxHealth
+                || HealthRenderer.previousAbsorption != absorption || HealthRenderer.previousEffect != currentEffect) {
+            HealthRenderer.hearts = calculateHearts(absorption, currentHealth, maxHealth, currentEffect);
+            HealthRenderer.previousHealth = currentHealth;
+            HealthRenderer.previousMaxHealth = maxHealth;
+            HealthRenderer.previousAbsorption = absorption;
+            HealthRenderer.previousEffect = currentEffect;
         }
 
-        int hardcoreOffset = 0;
-        assert HealthRenderer.client.level != null;
-        if (HealthRenderer.client.level.getLevelData().isHardcore()) {
-            hardcoreOffset = 5;
+        for (int i = 0; i < HealthRenderer.hearts.size(); i++) {
+            HeartIcon heart = HealthRenderer.hearts.get(i);
+
+            int regenOffset = i < 10 && i == regenHealth ? -2 : 0;
+            int absorptionOffset = i > 9 ? -10 : 0;
+
+            int yPosition = yPos + regenOffset + absorptionOffset;
+            int xPosition = xPos + i % 10 * 8;
+
+            if (HealthOverlay.absorptionOverHealth || i < 10) {
+
+                if (currentHealth <= 4 && (HealthOverlay.absorptionOverHealthMode != HealthOverlay.AbsorptionMode.AS_HEALTH || currentHealth + absorption <= 4)) {
+                    yPosition += HealthRenderer.random.nextInt(2);
+                }
+
+                if (i == regenHealth) {
+                    yPosition -= 2;
+                }
+            }
+
+            heart.render(matrixStack, xPosition, yPosition, highlight, currentEffect);
         }
 
-        for (int i = MathHelper.ceil((maxHealth + (float) absorption) / 2.0F) - 1; i >= 0; --i) {
-            int value = i * 2 + 1;
-            int x = xPos + i % 10 * 8;
-            int y = yPos;
-            if (currentHealth <= 4) {
-                y += HealthRenderer.random.nextInt(2);
-            }
-
-            if (absorptionCount > 0) {
-                x = xPos + (MathHelper.ceil((float) absorptionCount / 2.0F) - 1) % 10 * 8;
-                y = yPos - 10;
-            }
-
-            if (absorptionCount <= 0 && i == regenHealth) {
-                y -= 2;
-            }
-
-            // Regular half heart background
-            if ((value % 2 == 1 && value == maxHealth) || absorptionCount == absorption && absorption % 2 == 1) {
-                HealthRenderer.client.getTextureManager().bind(HALF_HEART_ICONS_LOCATION);
-                drawTexture(matrixStack, x, y, (highlight ? 1 : 0) * 9, 0);
-                HealthRenderer.client.getTextureManager().bind(AbstractGui.GUI_ICONS_LOCATION);
-            } else {
-                drawTexture(matrixStack, x, y, 16 + (highlight ? 1 : 0) * 9, 9 * hardcoreOffset);
-            }
-
-            // Highlight when damaged / regenerating
-            if (highlight) {
-                if (value < previousHealth) {
-                    drawTexture(matrixStack, x, y, effectOffset + 54, 9 * hardcoreOffset);
-                }
-
-                if (value == previousHealth) {
-                    drawTexture(matrixStack, x, y, effectOffset + 63, 9 * hardcoreOffset);
-                }
-            }
-
-            // Absorption
-            if (absorptionCount > 0) {
-                if (absorptionCount == absorption && absorption % 2 == 1) {
-                    drawTexture(matrixStack, x, y, effectOffset + 153, 9 * hardcoreOffset);
-                    --absorptionCount;
-                } else {
-                    drawTexture(matrixStack, x, y, effectOffset + 144, 9 * hardcoreOffset);
-                    absorptionCount -= 2;
-                }
-            } else {
-                if (value < currentHealth) {
-                    drawTexture(matrixStack, x, y, effectOffset + 36, 9 * hardcoreOffset);
-                }
-
-                if (value == currentHealth) {
-                    drawTexture(matrixStack, x, y, effectOffset + 45, 9 * hardcoreOffset);
-                }
-            }
-        }
-
-        HealthRenderer.renderHearts(matrixStack, player, xPos, yPos, regenHealth, false);
-        HealthRenderer.renderHearts(matrixStack, player, xPos, yPos - rowHeight, regenHealth, true);
         event.setCanceled(true);
     }
 
-    private static void renderHearts(MatrixStack matrixStack, PlayerEntity player, int xPosition, int yPosition, int regenHealth, boolean absorption) {
-        if (absorption && (player.hasEffect(Effects.POISON) || player.hasEffect(Effects.WITHER)))
-            return;
-        assert HealthRenderer.client.level != null;
-        int yTex = HealthRenderer.client.level.getLevelData().isHardcore() ? (absorption ? 18 : 45) : 0;
-        int xTex = 0;
-        int currentValue = MathHelper.ceil(absorption ? player.getAbsorptionAmount() : player.getHealth()) - 20;
-        if (currentValue <= 0) return;
+    private static List<HeartIcon> calculateHearts(int absorption, int health, int maxHealth, int effects) {
+        List<HeartIcon> hearts = Lists.newArrayList();
+        ColoredHeart[] healthColors, absorptionColors;
 
-        GlStateManager._enableBlend();
-        HealthRenderer.client.getTextureManager().bind(absorption ? ABSORPTION_ICONS_LOCATION : HEALTH_ICONS_LOCATION);
-        int prevType = 0;
-        for (int i = 0; i < MathHelper.ceil(currentValue / 2.0F); ++i) {
-            int value = i * 2 + 1;
-            int regenOffset = !absorption && (i - (10 * (i / 10))) == regenHealth ? -2 : 0;
+        if (HealthOverlay.absorptionOverHealth && HealthOverlay.absorptionOverHealthMode == HealthOverlay.AbsorptionMode.AS_HEALTH) {
+            health += absorption;
+        }
 
-            int typeOffset = (value / 20) % (absorption ? HealthOverlay.absorptionColors.length : HealthOverlay.healthColors.length);
-            Color heartColor = (absorption ? HealthOverlay.absorptionColors : HealthOverlay.healthColors)[typeOffset];
-            if (typeOffset > prevType + 1 || typeOffset < prevType - 1) prevType = typeOffset;
+        if (effects == 0) {
+            boolean flag = HealthOverlay.absorptionOverHealth && HealthOverlay.absorptionOverHealthMode == HealthOverlay.AbsorptionMode.AFTER_HEALTH_ADVANCED && health % 20 != 0;
+            boolean asHealth = HealthOverlay.absorptionOverHealth && HealthOverlay.absorptionOverHealthMode == HealthOverlay.AbsorptionMode.AS_HEALTH;
 
-            int yPos = yPosition + regenOffset;
-            int xPos = xPosition + i % 10 * 8;
+            // Health
+            if (!HealthOverlay.absorptionOverHealth || absorption < 20 || flag || asHealth) {
+                if (health > 20) {
+                    healthColors = new ColoredHeart[2];
+                    double var = health - (health % 20 == 0 ? 1 : 0);
+                    healthColors[1] = HealthOverlay.healthColors[(int) (var / 20.0) % HealthOverlay.healthColors.length];
 
-            // Color the hearts with a mixed color when an effect is active
-            if (player.hasEffect(Effects.POISON)) {
-                xTex = 18;
-                heartColor = (prevType != typeOffset) ? HealthOverlay.poisonColors[0] : HealthOverlay.poisonColors[1];
-                //color(multiply(heartColor, new GLColor(/*35*/204, /*97*/204, /*36*/0), 150));
-            } else if (player.hasEffect(Effects.WITHER)) {
-                xTex = 36;
-                heartColor = (prevType != typeOffset) ? HealthOverlay.witherColors[0] : HealthOverlay.witherColors[1];
-                //color(multiply(heartColor, new GLColor(1, 1, 1), 50));
+                    if (health % 20 != 0 && (health > 40 || !HealthOverlay.healthVanilla)) {
+                        var = var - 20.0;
+                        healthColors[0] = HealthOverlay.healthColors[(int) (var / 20.0) % HealthOverlay.healthColors.length];
+                    } else {
+                        healthColors[0] = HealthOverlay.healthColors[0];
+                    }
+                } else {
+                    healthColors = new ColoredHeart[1];
+                    healthColors[0] = HealthOverlay.healthColors[0];
+                }
+            } else {
+                healthColors = null;
             }
 
-            // Full heart
-            if (value < currentValue) {
+            // Absorption
+            if (absorption > 0 && !asHealth) {
+                double var1 = flag ? 20 - (health % 20) : 20;
+                if (absorption > var1) {
+                    absorptionColors = new ColoredHeart[2];
+                    double var2 = absorption - (absorption % var1 == 0 ? 1 : 0);
+                    absorptionColors[1] = HealthOverlay.absorptionColors[(int) (var2 / var1) % HealthOverlay.absorptionColors.length];
 
-                // Render heart
-                drawTexture(matrixStack, xPos, yPos, xTex, yTex, heartColor);
-
-                if (player.hasEffect(Effects.WITHER)) {
-                    drawTexture(matrixStack, xPos, yPos, xTex, yTex + (yTex == 45 ? 27 : 18), 255);
+                    if (absorption % var1 != 0 && (absorption > (2 * var1) || !HealthOverlay.absorptionVanilla)) {
+                        var2 = var2 - var1;
+                        absorptionColors[0] = HealthOverlay.absorptionColors[(int) (var2 / var1) % HealthOverlay.absorptionColors.length];
+                    } else {
+                        absorptionColors[0] = HealthOverlay.absorptionColors[0];
+                    }
                 } else {
-                    // Add shading
-                    drawTexture(matrixStack, xPos, yPos, xTex, yTex + 9, 56);
+                    absorptionColors = new ColoredHeart[1];
+                    absorptionColors[0] = HealthOverlay.absorptionColors[0];
                 }
+            } else {
+                absorptionColors = null;
+            }
 
-                // Add hardcore overlay
-                if (yTex == 45 || yTex == 18) {
-                    drawTexture(matrixStack, xPos, yPos, xTex, yTex + (absorption ? 9 : 18), 178);
-                } // Add white dot
-                else {
-                    drawTexture(matrixStack, xPos, yPos, (absorption ? 36 : 54), yTex, 255);
+        } else if (effects == 1) {
+            healthColors = HealthOverlay.healthWitherColors;
+            absorptionColors = HealthOverlay.absorptionWitherColors;
+            assert absorptionColors != null;
+        } else {
+            healthColors = HealthOverlay.healthPoisonColors;
+            absorptionColors = HealthOverlay.absorptionPoisonColors;
+            assert absorptionColors != null;
+        }
+
+        int healthRange = Math.min(health, 20);
+        int topHealthRange = health > 20 ? (health % 20 == 0 ? 20 : (health % 20)) : 0;
+        int absorptionRange = Math.min(absorption, 20);
+        int topAbsorptionRange = absorption > 20 ? (absorption % 20 == 0 ? 20 : (absorption % 20)) : 0;
+
+        if (HealthOverlay.absorptionOverHealth) {
+
+            HealthOverlay.AbsorptionMode mode = HealthOverlay.absorptionOverHealthMode;
+            int[] offsets = null;
+
+            if (mode != HealthOverlay.AbsorptionMode.AS_HEALTH) {
+                if (absorption == 0 || health % 20 == 0 || (absorption >= 20 && mode != HealthOverlay.AbsorptionMode.AFTER_HEALTH_ADVANCED)) {
+                    // If health is divisible by 20 render via the simpler BEGINNING mode
+                    mode = HealthOverlay.AbsorptionMode.BEGINNING;
+                } else if (HealthOverlay.absorptionOverHealthMode == HealthOverlay.AbsorptionMode.AFTER_HEALTH) {
+                    // Get free space left after highest health row
+                    int var1 = 20 - (health % 20);
+                    // Get absorption that is left after free space is filled, aka "overflown" absorption
+                    int var2 = absorptionRange - var1;
+                    // If value is lower than or equal to this, render absorption that comes after highest health row
+                    int var3 = health > 20 ? (topHealthRange + absorptionRange) : (healthRange + absorptionRange);
+
+                    offsets = new int[]{var1, var2, var3};
+
+                } else if (HealthOverlay.absorptionOverHealthMode == HealthOverlay.AbsorptionMode.AFTER_HEALTH_ADVANCED) {
+                    // Get free space left after highest health row
+                    // health % 20 is never 0 because of the first if statement
+                    int var = 20 - (health % 20);
+                    // Get actual topAbsorptionRange as this mode keeps highest health row always visible unless (health % 20 == 0)
+                    topAbsorptionRange = absorption > var ? (absorption % var == 0 ? var : (absorption % var)) : 0;
+
+                    int temp = health < 20 ? healthRange : topHealthRange;
+                    // If value is lower than or equal to this, render highest absorption that comes after the highest health row
+                    int var1 = topAbsorptionRange + temp;
+                    // If value is lower than or equal to this, render lower absorption that comes after the highest health row
+                    int var2 = absorptionRange + temp;
+
+                    offsets = new int[]{var1, var2};
                 }
-                // Half heart
-            } else if (value == currentValue) {
+            }
 
-                // Render heart
-                drawTexture(matrixStack, xPos, yPos, xTex + 9, yTex, heartColor);
+            for (int i = 0; i < MathHelper.ceil(Math.min(maxHealth + absorption, 20) / 2.0F); i++) {
+                int value = i * 2 + 1;
 
-                if (player.hasEffect(Effects.WITHER)) {
-                    drawTexture(matrixStack, xPos, yPos, xTex + 9, yTex + (yTex == 45 ? 27 : 18), 255);
-                } else {
-                    // Add shading
-                    drawTexture(matrixStack, xPos, yPos, xTex + 9, yTex + 9, 56);
+                if (value > (absorption + health)) {
+                    if (value < maxHealth) {
+                        hearts.add(HeartIcon.background(true));
+                    } else if (value == maxHealth) {
+                        hearts.add(HeartIcon.background(false));
+                    }
+                } else switch (mode) {
+                    case BEGINNING:
+                        if (value < topAbsorptionRange) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[1]));
+                        } else if (value == topAbsorptionRange) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[1], absorptionColors[0]));
+                        } else if (value < absorptionRange) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[0]));
+                        } else if (value == absorptionRange) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[0], healthColors[0]));
+                        } else if (value < topHealthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1]));
+                        } else if (value == topHealthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1], healthColors[0]));
+                        } else if (value < healthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[0]));
+                        } else if (value == healthRange) {
+                            hearts.add(HeartIcon.heart(value != maxHealth, false, healthColors[0]));
+                        }
+                        break;
+                    case AFTER_HEALTH:
+                        if (absorption > offsets[0] && value < offsets[1]) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[0]));
+                        } else if (absorption > offsets[0] && value == offsets[1]) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[0], healthColors[value < topHealthRange ? 1 : 0]));
+                        } else if (value < topHealthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1]));
+                        } else if (value == topHealthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1], absorptionColors[0]));
+                        } else if (health > 20) {
+                            if (value < offsets[2]) {
+                                hearts.add(HeartIcon.heart(true, true, absorptionColors[0]));
+                            } else if (value == offsets[2]) {
+                                hearts.add(HeartIcon.heart(true, true, absorptionColors[0], healthColors[0]));
+                            } else if (value < healthRange) {
+                                hearts.add(HeartIcon.heart(true, true, healthColors[0]));
+                            } else if (value == healthRange) {
+                                if (absorption > 0) {
+                                    hearts.add(HeartIcon.heart(true, true, healthColors[0], absorptionColors[0]));
+                                } else hearts.add(HeartIcon.heart(value != maxHealth, false, healthColors[0]));
+                            }
+                        } else {
+                            if (value < healthRange) {
+                                hearts.add(HeartIcon.heart(true, true, healthColors[0]));
+                            } else if (value == healthRange) {
+                                if (absorption > 0) {
+                                    hearts.add(HeartIcon.heart(true, true, healthColors[0], absorptionColors[0]));
+                                } else hearts.add(HeartIcon.heart(value != maxHealth, false, healthColors[0]));
+                            } else if (value < offsets[2]) {
+                                hearts.add(HeartIcon.heart(true, true, absorptionColors[0]));
+                            } else if (value == offsets[2]) {
+                                hearts.add(HeartIcon.heart(false, false, absorptionColors[0]));
+                            }
+                        }
+                        break;
+                    case AFTER_HEALTH_ADVANCED:
+                        if (health < 20 && value < healthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[0]));
+                        } else if (health < 20 && value == healthRange) {
+                            if (topAbsorptionRange > 0) {
+                                hearts.add(HeartIcon.heart(true, true, healthColors[0], absorptionColors[1]));
+                            } else if (absorptionRange > 0) {
+                                hearts.add(HeartIcon.heart(true, true, healthColors[0], absorptionColors[0]));
+                            } else {
+                                hearts.add(HeartIcon.heart(false, false, healthColors[0]));
+                            }
+                        } else if (value < topHealthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1]));
+                        } else if (value == topHealthRange) {
+                            ColoredHeart secondHalf;
+                            if (topAbsorptionRange > 0) {
+                                secondHalf = absorptionColors[1];
+                            } else if (absorptionRange > 0) {
+                                secondHalf = absorptionColors[0];
+                            } else secondHalf = healthColors[0];
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1], secondHalf));
+                        } else if (value < offsets[0]) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[1]));
+                        } else if (value == offsets[0]) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[1], absorptionColors[0]));
+                        } else if (value < offsets[1]) {
+                            hearts.add(HeartIcon.heart(true, true, absorptionColors[0]));
+                        } else if (value == offsets[1]) {
+                            if (health < 20) {
+                                hearts.add(HeartIcon.heart(false, false, absorptionColors[0]));
+                            } else hearts.add(HeartIcon.heart(true, true, absorptionColors[0], healthColors[0]));
+                        } else if (health > 20) {
+                            if (value < healthRange) {
+                                hearts.add(HeartIcon.heart(true, true, healthColors[0]));
+                            } else if (value == healthRange) {
+                                hearts.add(HeartIcon.heart(false, false, healthColors[0]));
+                            }
+                        }
+                        break;
+                    case AS_HEALTH:
+                        if (value < topHealthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1]));
+                        } else if (value == topHealthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[1], healthColors[0]));
+                        } else if (value < healthRange) {
+                            hearts.add(HeartIcon.heart(true, true, healthColors[0]));
+                        } else if (value == healthRange) {
+                            hearts.add(HeartIcon.heart(value != maxHealth && value < absorptionRange, false, healthColors[0]));
+                        }
+                        break;
                 }
+            }
+        } else {
+            for (int i = 0; i < MathHelper.ceil(Math.min(maxHealth, 20) / 2.0F); i++) {
+                int value = i * 2 + 1;
 
-                // Add hardcore overlay
-                if (yTex == 45 || yTex == 18) {
-                    drawTexture(matrixStack, xPos, yPos, xTex, yTex + (absorption ? 9 : 18), 178);
-                } // Add white dot
-                else {
-                    drawTexture(matrixStack, xPos, yPos, (absorption ? 36 : 54) + 9, yTex, 255);
+                if (value < topHealthRange) {
+                    hearts.add(HeartIcon.heart(true, true, healthColors[1]));
+                } else if (value == topHealthRange) {
+                    hearts.add(HeartIcon.heart(true, true, healthColors[1], healthColors[0]));
+                } else if (value < healthRange) {
+                    hearts.add(HeartIcon.heart(true, true, healthColors[0]));
+                } else if (value == healthRange) {
+                    if (maxHealth > value) {
+                        hearts.add(HeartIcon.heart(true, false, healthColors[0]));
+                    } else {
+                        hearts.add(HeartIcon.heart(false, false, healthColors[0]));
+                    }
+                } else if (value < maxHealth) {
+                    hearts.add(HeartIcon.background(true));
+                } else if (value == maxHealth) {
+                    hearts.add(HeartIcon.background(false));
+                }
+            }
+
+            if (absorption > 0) {
+                for (int i = 0; i < MathHelper.ceil(absorptionRange / 2.0F); i++) {
+                    int value = i * 2 + 1;
+
+                    if (absorptionColors == null) {
+                        if (value < topAbsorptionRange || value < absorptionRange) {
+                            hearts.add(HeartIcon.background(true));
+                        } else if (value == topAbsorptionRange || value == absorptionRange) {
+                            hearts.add(HeartIcon.background(false));
+                        }
+                    } else if (value < topAbsorptionRange) {
+                        hearts.add(HeartIcon.heart(true, true, absorptionColors[1]));
+                    } else if (value == topAbsorptionRange) {
+                        hearts.add(HeartIcon.heart(true, true, absorptionColors[1], absorptionColors[0]));
+                    } else if (value < absorptionRange) {
+                        hearts.add(HeartIcon.heart(true, true, absorptionColors[0]));
+                    } else if (value == absorptionRange) {
+                        hearts.add(HeartIcon.heart(false, false, absorptionColors[0]));
+                    }
                 }
             }
         }
-        GlStateManager._disableBlend();
-        HealthRenderer.client.getTextureManager().bind(AbstractGui.GUI_ICONS_LOCATION);
-    }
-
-    private static void drawTexture(MatrixStack matrices, int x, int y, int u, int v) {
-        drawTexture(matrices, x, y, u, v, 0, 0, 0, 0);
-    }
-
-    private static void drawTexture(MatrixStack matrices, int x, int y, int u, int v, int alpha) {
-        drawTexture(matrices, x, y, u, v, 255, 255, 255, alpha);
-    }
-
-    private static void drawTexture(MatrixStack matrices, int x, int y, int u, int v, Color color) {
-        int rgb = color.getValue();
-        int r = (rgb >> 16) & 0xFF;
-        int g = (rgb >> 8) & 0xFF;
-        int b = rgb & 0xFF;
-        drawTexture(matrices, x, y, u, v, r, g, b, 255);
-    }
-
-    private static void drawTexture(MatrixStack matrices, int x, int y, int u, int v, int red, int green, int blue, int alpha) {
-        RenderUtils.drawColoredTexturedQuad(matrices.last().pose(),
-                x, x + 9,
-                y, y + 9,
-                HealthRenderer.client.gui.getBlitOffset(),
-                (u + 0.0F) / 256.0F, (u + (float) 9) / 256.0F,
-                (v + 0.0F) / 256.0F, (v + (float) 9) / 256.0F,
-                red, green, blue, alpha);
+        return hearts;
     }
 }

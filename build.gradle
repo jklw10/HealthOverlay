@@ -1,19 +1,19 @@
 buildscript {
     repositories {
-        maven { url = 'https://files.minecraftforge.net/maven' }
+        maven { url = 'https://maven.minecraftforge.net' }
         mavenCentral()
     }
     dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '4.1.+', changing: true
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
     }
 }
 apply plugin: 'net.minecraftforge.gradle'
 
 def minecraft_version = "1.16.5"
-def forge_version = "36.1.24"
+def forge_version = "36.2.1"
 def mappings_version = ["mojmapwithdoc", "2021-03-13-1.16.5"]
 
-version = '2.1.7'
+version = '3.0.0'
 group = 'terrails.healthoverlay'
 archivesBaseName = "HealthOverlay-${minecraft_version}"
 
@@ -78,7 +78,7 @@ sourceSets.main.resources {
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-//    runtime fg.deobf('curse.maven:statskeeper-258168:3117915')
+//    runtimeOnly fg.deobf('curse.maven:statskeeper-258168:3117915')
 }
 
 repositories {
