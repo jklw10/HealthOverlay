@@ -20,12 +20,12 @@ bin/
 .classpath
 .project
 
+# macos
+*.DS_Store
+
 # fabric
 run/
 
 # custom
 libs/
-
-# scripts
-branch_change.pyw
 branches/

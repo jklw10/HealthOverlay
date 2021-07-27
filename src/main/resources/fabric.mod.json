@@ -13,7 +13,7 @@
     "issues": "https://github.com/Terrails/Health-Overlay/issues"
   },
 
-  "license": "Apache-2.0",
+  "license": "MIT",
   "icon": "assets/healthoverlay/icon.png",
 
   "environment": "client",
@@ -28,7 +28,9 @@
   },
 
   "depends": {
-    "fabricloader": ">=0.8.8",
-    "fabric": "*"
+    "fabricloader": ">=0.11.6",
+    "fabric": "*",
+    "minecraft": "1.16.x",
+    "java": ">=8"
   }
 }

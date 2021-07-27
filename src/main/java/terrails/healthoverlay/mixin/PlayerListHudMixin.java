@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import terrails.healthoverlay.PlayerListHudRenderer;
+import terrails.healthoverlay.HeartRenderer;
 
 @Mixin(PlayerListHud.class)
 public abstract class PlayerListHudMixin extends DrawableHelper {
@@ -23,10 +23,7 @@ public abstract class PlayerListHudMixin extends DrawableHelper {
     @Inject(method = "renderScoreboardObjective", cancellable = true, at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/MinecraftClient;getTextureManager()Lnet/minecraft/client/texture/TextureManager;", shift = At.Shift.BEFORE))
     private void renderScoreboardObjective(ScoreboardObjective scoreboardObjective, int y, String string, int x, int k, PlayerListEntry playerListEntry, MatrixStack matrixStack, CallbackInfo callbackInfo) {
-        if (PlayerListHudRenderer.INSTANCE == null) {
-            PlayerListHudRenderer.INSTANCE = new PlayerListHudRenderer(this.client, this.inGameHud, this);
-        }
-        PlayerListHudRenderer.INSTANCE.render(scoreboardObjective, y, string, x, k, playerListEntry, matrixStack, showTime);
+        HeartRenderer.INSTANCE.renderPlayerListHud(scoreboardObjective, y, string, x, k, playerListEntry, matrixStack, showTime);
         callbackInfo.cancel();
     }
 }

@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
-import terrails.healthoverlay.HealthRenderer;
+import terrails.healthoverlay.HeartRenderer;
 
 @Mixin(InGameHud.class)
 public abstract class InGameHudMixin {
@@ -31,6 +31,6 @@ public abstract class InGameHudMixin {
     @Inject(method = "renderStatusBars", locals = LocalCapture.CAPTURE_FAILEXCEPTION,
             at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiler/Profiler;swap(Ljava/lang/String;)V", args = "ldc=health"))
     private void render(MatrixStack matrixStack, CallbackInfo info, PlayerEntity player) {
-        HealthRenderer.INSTANCE.render(matrixStack, player);
+        HeartRenderer.INSTANCE.renderHeartBar(matrixStack, player);
     }
 }
