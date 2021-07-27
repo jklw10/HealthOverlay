@@ -1,8 +1,6 @@
 package terrails.healthoverlay.mixin;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
-import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.gui.hud.PlayerListHud;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.util.math.MatrixStack;
@@ -16,12 +14,10 @@ import terrails.healthoverlay.HeartRenderer;
 @Mixin(PlayerListHud.class)
 public abstract class PlayerListHudMixin extends DrawableHelper {
 
-    @Shadow private @Final MinecraftClient client;
-    @Shadow private @Final InGameHud inGameHud;
     @Shadow private long showTime;
 
     @Inject(method = "renderScoreboardObjective", cancellable = true, at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/MinecraftClient;getTextureManager()Lnet/minecraft/client/texture/TextureManager;", shift = At.Shift.BEFORE))
+            target = "Lcom/mojang/blaze3d/systems/RenderSystem;setShaderTexture(ILnet/minecraft/util/Identifier;)V", shift = At.Shift.BEFORE))
     private void renderScoreboardObjective(ScoreboardObjective scoreboardObjective, int y, String string, int x, int k, PlayerListEntry playerListEntry, MatrixStack matrixStack, CallbackInfo callbackInfo) {
         HeartRenderer.INSTANCE.renderPlayerListHud(scoreboardObjective, y, string, x, k, playerListEntry, matrixStack, showTime);
         callbackInfo.cancel();

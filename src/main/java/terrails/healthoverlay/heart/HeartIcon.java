@@ -1,6 +1,7 @@
 package terrails.healthoverlay.heart;
 
 import com.google.common.collect.Sets;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.util.math.MatrixStack;
@@ -120,34 +121,30 @@ public class HeartIcon {
         } else return false;
     }
 
-    public void render(MatrixStack matrixStack, int xPosition, int yPosition, boolean highlight, int currentEffect) {
+    public void render(MatrixStack matrixStack, int xPosition, int yPosition, boolean blinking, int currentEffect) {
         // Background
         if (this.isBackgroundFull) {
             assert MinecraftClient.getInstance().world != null;
-            RenderUtils.drawTexture(matrixStack, xPosition, yPosition, 16 + (highlight ? 9 : 0), MinecraftClient.getInstance().world.getLevelProperties().isHardcore() ? 45 : 0);
+            RenderUtils.drawTexture(matrixStack, xPosition, yPosition, 16 + (blinking ? 9 : 0), MinecraftClient.getInstance().world.getLevelProperties().isHardcore() ? 45 : 0);
         } else {
-            MinecraftClient.getInstance().getTextureManager().bindTexture(HealthOverlay.HALF_HEART_ICONS_LOCATION);
-            RenderUtils.drawTexture(matrixStack, xPosition, yPosition, 0, (highlight ? 1 : 0) * 9);
-            MinecraftClient.getInstance().getTextureManager().bindTexture(DrawableHelper.GUI_ICONS_TEXTURE);
+            RenderSystem.setShaderTexture(0, HealthOverlay.HALF_HEART_ICONS_LOCATION);
+            RenderUtils.drawTexture(matrixStack, xPosition, yPosition, 0, (blinking ? 1 : 0) * 9);
+            RenderSystem.setShaderTexture(0, DrawableHelper.GUI_ICONS_TEXTURE);
         }
 
         if (this.hearts != null) {
             for (int i = 0; i < this.hearts.length; i++) {
                 ColoredHeart heart = this.hearts[i];
 
-                if (heart.isAbsorption() && heart.isVanilla() && currentEffect != 0) {
-                    continue;
-                }
-
                 if (this.isHeartFull != null) {
                     if (this.hearts.length == 1) {
                         if (this.isHeartFull) {
-                            heart.render(matrixStack, xPosition, yPosition, highlight, currentEffect);
+                            heart.render(matrixStack, xPosition, yPosition, blinking, currentEffect);
                         } else {
-                            heart.render(matrixStack, xPosition, yPosition, highlight, currentEffect, true);
+                            heart.render(matrixStack, xPosition, yPosition, blinking, currentEffect, true);
                         }
                     } else {
-                        heart.render(matrixStack, xPosition, yPosition, highlight, currentEffect, i == 1);
+                        heart.render(matrixStack, xPosition, yPosition, blinking, currentEffect, i == 1);
                     }
                 }
             }

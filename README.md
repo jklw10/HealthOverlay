@@ -18,13 +18,24 @@ CurseForge webpage containing downloads: https://www.curseforge.com/minecraft/mc
 			"...",
 			"..."
 		],
-		// Two alternating colors when poisoned
+		/* Two alternating colors when poisoned
+		   There can be one color in case vanilla poisoned heart is wanted
+		*/
 		"health_poison_colors": [
 			"...",
 			"..."
 		],
-		// Two alternating colors when withered
+		/* Two alternating colors when withered
+		   There can be one color in case vanilla withered heart is wanted
+		*/
 		"health_wither_colors": [
+			"...",
+			"..."
+		],
+		/* Two alternating colors when freezing
+		   There can be one color in case vanilla frozen heart is wanted
+		*/
+		"health_frozen_colors": [
 			"...",
 			"..."
 		]
@@ -40,14 +51,21 @@ CurseForge webpage containing downloads: https://www.curseforge.com/minecraft/mc
 			"...",
 			"..."
 		],
-		/* Two alternating colors when poisoned
-		   Can be empty in case of vanilla behaviour where heart background is rendered without hearts
-		*/
-		"absorption_poison_colors": [],
-		/* Two alternating colors when withered
-		   Can be empty in case of vanilla behaviour where heart background is rendered without hearts
-		*/
-		"absorption_wither_colors": [],
+		// Two alternating colors when poisoned
+		"absorption_poison_colors": [
+			"...",
+			"..."
+		],
+		// Two alternating colors when withered
+		"absorption_wither_colors": [
+			"...",
+			"..."
+		],
+		// Two alternating colors when freezing
+		"absorption_frozen_colors": [
+			"...",
+			"..."
+		],
 		"advanced": {
 			/* Display absorption in the same row as health
 			   Absorption is rendered after and over health depending on the mode
@@ -55,7 +73,7 @@ CurseForge webpage containing downloads: https://www.curseforge.com/minecraft/mc
 			"absorption_over_health": false,
 			/* Display mode for absorption
 			   absorption.advanced.absorptionOverHealth must to be true
-			   Modes: 
+			   Modes:
 			     "BEGINNING":
 			       Absorption always starts at first heart.
 			     "AFTER_HEALTH":
@@ -92,25 +110,12 @@ Visible in `src/main/resources/assets/healthoverlay/textures`
 - Used for half heart absorptions or when max health is lowered below 20
 - Dark value is the standard and white value is displayed when health is regenerating
 
-###### absorption.png
-- Absorption hearts colored via config values
+###### absorption.png & health.png
+- Absorption and health hearts colored via config values
 - First row of hearts is used in non-hardcore worlds and second row in hardcore worlds
-    - From left to right: standard, poison, wither
-    - The row right below is used to add an accent to the heart
-        - Non-hardcore accent is rendered with no transparency
-        - Hardcore accent is rendered with '88/255' RGBA transparency  
-          expect it to look a lot paler to what it is in file
-
-###### health.png
-- Health hearts colored via config values
-- First row of hearts is used in non-hardcore worlds and second row in hardcore worlds
-    - From left to right: standard, poison, wither
+    - From left to right: standard, poison, wither, frozen
     - First row below is used to add an accent to the heart
-        - Non-hardcore accent is rendered with no transparency
-        - Hardcore accent is rendered with '178/255' RGBA transparency  
-          expect it to look a little paler to what it is in file
-    - Second row below is used to add shading to the bottom of the heart
-        - Rendered with '56/255' RGBA transparency  
-          expect it to look a lot paler to what it is in file
-    - Third row below is used to add shading when withered around the heart
-        - Rendered with no transparency
+      - Non-hardcore is rendered with 216/255 RGBA transparency
+      - Hardcore is rendered with '88/255' (absorption) & '178/255' (health) RGBA transparency  
+    - Second row below is used to add shading to the heart
+      - Rendered with '56/255' RGBA transparency, when withered '216/255'
