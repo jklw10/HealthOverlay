@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import terrails.healthoverlay.HeartRenderer;
 
 @Mixin(InGameHud.class)
-public abstract class InGameHudMixin {
+public class InGameHudMixin {
 
     @Shadow private int ticks;
 

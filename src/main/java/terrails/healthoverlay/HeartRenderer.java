@@ -59,6 +59,7 @@ public class HeartRenderer {
         }
 
         RenderSystem.enableBlend();
+        RenderSystem.setShaderTexture(0, DrawableHelper.GUI_ICONS_TEXTURE);
         for (int i = 0; i < HeartRenderer.hearts.size(); i++) {
             HeartIcon heart = HeartRenderer.hearts.get(i);
 
@@ -114,7 +115,7 @@ public class HeartRenderer {
         if (MathHelper.ceil((float) Math.max(scoreValue, health) / 2.0F) > 0) {
 
             if (scoreValue != HeartRenderer.previousHealthHud) {
-                HeartRenderer.tabHearts = calculateHearts(0, scoreValue, 20, 0);
+                    HeartRenderer.tabHearts = calculateHearts(0, scoreValue, 20, 0);
                 // Fixed maxHealth value as its not possible to attain it via the leaderboard, might be possible by requesting PlayerEntity via the UUID, but it would be a better idea to avoid that
                 HeartRenderer.previousHealthHud = scoreValue;
             }
@@ -129,6 +130,8 @@ public class HeartRenderer {
             int ticks = MinecraftClient.getInstance().inGameHud.getTicks();
             boolean highlight = playerEntry.getBlinkingHeartTime() > (long) ticks && (playerEntry.getBlinkingHeartTime() - (long) ticks) / 3L % 2L == 1L;
 
+            RenderSystem.enableBlend();
+            RenderSystem.setShaderTexture(0, DrawableHelper.GUI_ICONS_TEXTURE);
             for (int i = 0; i < HeartRenderer.tabHearts.size(); i++) {
                 HeartIcon heart = HeartRenderer.tabHearts.get(i);
 
@@ -136,6 +139,7 @@ public class HeartRenderer {
 
                 heart.render(matrixStack, xPosition, yPos, highlight, 0);
             }
+            RenderSystem.disableBlend();
         }
     }
 
