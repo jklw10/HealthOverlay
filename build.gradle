@@ -15,7 +15,7 @@ apply plugin: 'org.parchmentmc.librarian.forgegradle'
 def minecraft_version = "1.16.5"
 def forge_version = "36.2.2"
 
-version = '3.0.0'
+version = '3.0.1'
 group = 'terrails.healthoverlay'
 archivesBaseName = "HealthOverlay-${minecraft_version}"
 
