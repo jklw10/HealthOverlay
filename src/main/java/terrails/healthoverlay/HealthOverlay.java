@@ -196,7 +196,7 @@ public class HealthOverlay {
     private static ColoredHeart[] getColors(List<? extends String> stringValues, boolean absorption, boolean effect) {
         ColoredHeart[] colors;
         int offset;
-        if (absorption && effect && (stringValues.size() == 1 || stringValues.size() > 2)) {
+        if (absorption && effect && (stringValues.size() != 0 && stringValues.size() != 2)) {
             HealthOverlay.LOGGER.error("Absorption heart effect colors must be either empty or have 2 values.");
             throw new IllegalArgumentException(stringValues.toString());
         } else if (!absorption && effect && stringValues.size() != 2) {
