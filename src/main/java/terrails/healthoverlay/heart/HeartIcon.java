@@ -1,9 +1,9 @@
 package terrails.healthoverlay.heart;
 
 import com.google.common.collect.Sets;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
-import net.minecraft.client.util.math.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiComponent;
 import org.jetbrains.annotations.Nullable;
 import terrails.healthoverlay.HealthOverlay;
 import terrails.healthoverlay.RenderUtils;
@@ -120,15 +120,15 @@ public class HeartIcon {
         } else return false;
     }
 
-    public void render(MatrixStack matrixStack, int xPosition, int yPosition, boolean highlight, int currentEffect) {
+    public void render(PoseStack poseStack, int xPosition, int yPosition, boolean highlight, int currentEffect) {
         // Background
         if (this.isBackgroundFull) {
-            assert MinecraftClient.getInstance().world != null;
-            RenderUtils.drawTexture(matrixStack, xPosition, yPosition, 16 + (highlight ? 9 : 0), MinecraftClient.getInstance().world.getLevelProperties().isHardcore() ? 45 : 0);
+            assert Minecraft.getInstance().level != null;
+            RenderUtils.drawTexture(poseStack, xPosition, yPosition, 16 + (highlight ? 9 : 0), Minecraft.getInstance().level.getLevelData().isHardcore() ? 45 : 0);
         } else {
-            MinecraftClient.getInstance().getTextureManager().bindTexture(HealthOverlay.HALF_HEART_ICONS_LOCATION);
-            RenderUtils.drawTexture(matrixStack, xPosition, yPosition, 0, (highlight ? 1 : 0) * 9);
-            MinecraftClient.getInstance().getTextureManager().bindTexture(DrawableHelper.GUI_ICONS_TEXTURE);
+            Minecraft.getInstance().getTextureManager().bind(HealthOverlay.HALF_HEART_ICONS_LOCATION);
+            RenderUtils.drawTexture(poseStack, xPosition, yPosition, 0, (highlight ? 1 : 0) * 9);
+            Minecraft.getInstance().getTextureManager().bind(GuiComponent.GUI_ICONS_LOCATION);
         }
 
         if (this.hearts != null) {
@@ -142,12 +142,12 @@ public class HeartIcon {
                 if (this.isHeartFull != null) {
                     if (this.hearts.length == 1) {
                         if (this.isHeartFull) {
-                            heart.render(matrixStack, xPosition, yPosition, highlight, currentEffect);
+                            heart.render(poseStack, xPosition, yPosition, highlight, currentEffect);
                         } else {
-                            heart.render(matrixStack, xPosition, yPosition, highlight, currentEffect, true);
+                            heart.render(poseStack, xPosition, yPosition, highlight, currentEffect, true);
                         }
                     } else {
-                        heart.render(matrixStack, xPosition, yPosition, highlight, currentEffect, i == 1);
+                        heart.render(poseStack, xPosition, yPosition, highlight, currentEffect, i == 1);
                     }
                 }
             }

@@ -4,8 +4,8 @@
   "package": "terrails.healthoverlay.mixin",
   "compatibilityLevel": "JAVA_8",
   "client": [
-    "InGameHudMixin",
-    "PlayerListHudMixin"
+    "GuiMixin",
+    "PlayerTabOverlayMixin"
   ],
   "injectors": {
     "defaultRequire": 1
