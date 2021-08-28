@@ -22,7 +22,7 @@ repositories {
 		url 'https://maven.parchmentmc.org/'
 	}
     maven {
-        url "https://www.cursemaven.com"
+        url "https://www.cursemaven.com/"
         content {
             includeGroup "curse.maven"
         }
@@ -46,7 +46,7 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
     // ModMenu
-    modRuntime "com.terraformersmc:modmenu:1.16.11"
+    modRuntime "com.terraformersmc:modmenu:1.16.12"
 
     // Stats Keeper for testing
     modRuntime "curse.maven:statskeeper-318348:3406374" // 1.16.5-3.2.8
