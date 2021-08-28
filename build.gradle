@@ -1,23 +1,26 @@
 plugins {
-    id 'fabric-loom' version '0.8-SNAPSHOT'
+    id 'fabric-loom' version '0.9.+'
 }
 
 sourceCompatibility = JavaVersion.VERSION_16
 targetCompatibility = JavaVersion.VERSION_16
 
 def minecraft_version = "1.17.1"
-def yarn_version = "1.17.1+build.30"
+def parchment_version = "2021.08.22"
 def loader_version = "0.11.6"
-def fabric_version = "0.37.1+1.17"
+def fabric_version = "0.39.2+1.17"
 
 archivesBaseName = "HealthOverlay-${minecraft_version}"
-version = "4.0.1"
+version = "4.0.2"
 group = "terrails.healthoverlay"
 
-minecraft {
-}
+minecraft { }
 
 repositories {
+    maven {
+        name 'ParchmentMC'
+        url 'https://maven.parchmentmc.org/'
+    }
     maven {
         name 'TerraFormersMC'
         url 'https://maven.terraformersmc.com/'
@@ -29,12 +32,15 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings "net.fabricmc:yarn:${yarn_version}:v2"
+    mappings loom.layered() {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${minecraft_version}:${parchment_version}@zip")
+    }
     modImplementation "net.fabricmc:fabric-loader:${loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
     // ModMenu
-    modRuntime "com.terraformersmc:modmenu:2.0.4"
+    modRuntime "com.terraformersmc:modmenu:2.0.6"
 
     // Fiber Config
     modApi "me.zeroeightsix:fiber:0.23.0-2"
@@ -51,6 +57,7 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.encoding = "UTF-8"
+    it.options.release = 16
 }
 
 java {

@@ -2,17 +2,17 @@ package terrails.healthoverlay;
 
 import com.google.common.collect.Lists;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.scoreboard.ScoreboardObjective;
-import net.minecraft.util.Util;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiComponent;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.scores.Objective;
 import terrails.healthoverlay.heart.ColoredHeart;
 import terrails.healthoverlay.heart.HeartIcon;
 
@@ -25,6 +25,7 @@ public class HeartRenderer {
     public static HeartRenderer INSTANCE = new HeartRenderer();
 
     private static final Random random = new Random();
+    private static final Minecraft minecraft = Minecraft.getInstance();
 
     private static int previousHealth, previousMaxHealth, previousAbsorption, previousEffect;
     private static List<HeartIcon> hearts = Lists.newArrayList();
@@ -32,34 +33,38 @@ public class HeartRenderer {
     private static int previousHealthHud;
     private static List<HeartIcon> tabHearts = Lists.newArrayList();
 
-    public void renderHeartBar(MatrixStack matrixStack, PlayerEntity player, int xPos, int yPos, int regeneratingHeartIndex, float maxHealth, int currentHealth, int absorption, boolean blinking) {
+    public void renderHeartBar(PoseStack poseStack, Player player, int xPos, int yPos, int regeneratingHeartIndex, boolean blinking) {
         if (HealthOverlay.healthColors.length == 0 || HealthOverlay.absorptionColors.length == 0) {
             return;
         }
 
         int currentEffect = 0;
-        if (player.hasStatusEffect(StatusEffects.POISON)) {
+        if (player.hasEffect(MobEffects.POISON)) {
             currentEffect = 1;
-        } else if (player.hasStatusEffect(StatusEffects.WITHER)) {
+        } else if (player.hasEffect(MobEffects.WITHER)) {
             currentEffect = 2;
-        } else if (player.isFreezing()) {
+        } else if (player.isFullyFrozen()) {
             currentEffect = 3;
         }
 
-        int ticks = MinecraftClient.getInstance().inGameHud.getTicks();
+        int ticks = minecraft.gui.getGuiTicks();
         HeartRenderer.random.setSeed(ticks * 312871L);
 
-        if (HeartRenderer.previousHealth != currentHealth || HeartRenderer.previousMaxHealth != (int) maxHealth
+        int currentHealth = Mth.ceil(player.getHealth());
+        int maxHealth = Mth.ceil(player.getMaxHealth());
+        int absorption = Mth.ceil(player.getAbsorptionAmount());
+
+        if (HeartRenderer.previousHealth != currentHealth || HeartRenderer.previousMaxHealth != maxHealth
                 || HeartRenderer.previousAbsorption != absorption || HeartRenderer.previousEffect != currentEffect) {
-            HeartRenderer.hearts = calculateHearts(absorption, currentHealth, (int) maxHealth, currentEffect);
+            HeartRenderer.hearts = calculateHearts(absorption, currentHealth, maxHealth, currentEffect);
             HeartRenderer.previousHealth = currentHealth;
-            HeartRenderer.previousMaxHealth = (int) maxHealth;
+            HeartRenderer.previousMaxHealth = maxHealth;
             HeartRenderer.previousAbsorption = absorption;
             HeartRenderer.previousEffect = currentEffect;
         }
 
         RenderSystem.enableBlend();
-        RenderSystem.setShaderTexture(0, DrawableHelper.GUI_ICONS_TEXTURE);
+        RenderSystem.setShaderTexture(0, GuiComponent.GUI_ICONS_LOCATION);
         for (int i = 0; i < HeartRenderer.hearts.size(); i++) {
             HeartIcon heart = HeartRenderer.hearts.get(i);
 
@@ -71,7 +76,7 @@ public class HeartRenderer {
 
             if (HealthOverlay.absorptionOverHealth || i < 10) {
 
-                if (currentHealth + absorption <= 4) {
+                if (currentHealth <= 4 && (HealthOverlay.absorptionOverHealthMode != HealthOverlay.AbsorptionMode.AS_HEALTH || currentHealth + absorptionOffset <= 4)) {
                     yPosition += HeartRenderer.random.nextInt(2);
                 }
 
@@ -80,39 +85,38 @@ public class HeartRenderer {
                 }
             }
 
-            heart.render(matrixStack, xPosition, yPosition, blinking, currentEffect);
+            heart.render(poseStack, xPosition, yPosition, blinking, currentEffect);
         }
         RenderSystem.disableBlend();
-
     }
 
-    public void renderPlayerListHud(ScoreboardObjective objective, int yPos, String string, int xPos, int xOffset, PlayerListEntry playerEntry, MatrixStack matrixStack, long showTime) {
-        int scoreValue = objective.getScoreboard().getPlayerScore(string, objective).getScore();
+    public void renderPlayerListHud(Objective objective, int yPos, String string, int xPos, int xOffset, PlayerInfo playerEntry, PoseStack poseStack, long visibilityId) {
+        int scoreValue = objective.getScoreboard().getOrCreatePlayerScore(string, objective).getScore();
 
-        MinecraftClient.getInstance().getTextureManager().bindTexture(DrawableHelper.GUI_ICONS_TEXTURE);
-        long m = Util.getMeasuringTimeMs();
-        if (showTime == playerEntry.getShowTime()) {
+        RenderSystem.setShaderTexture(0, GuiComponent.GUI_ICONS_LOCATION);
+        long m = Util.getMillis();
+        if (visibilityId == playerEntry.getRenderVisibilityId()) {
             if (scoreValue < playerEntry.getLastHealth()) {
                 playerEntry.setLastHealthTime(m);
-                playerEntry.setBlinkingHeartTime(MinecraftClient.getInstance().inGameHud.getTicks() + 20);
+                playerEntry.setHealthBlinkTime(minecraft.gui.getGuiTicks() + 20);
             } else if (scoreValue > playerEntry.getLastHealth()) {
                 playerEntry.setLastHealthTime(m);
-                playerEntry.setBlinkingHeartTime(MinecraftClient.getInstance().inGameHud.getTicks() + 10);
+                playerEntry.setHealthBlinkTime(minecraft.gui.getGuiTicks() + 10);
             }
         }
 
-        if (m - playerEntry.getLastHealthTime() > 1000L || showTime != playerEntry.getShowTime()) {
+        if (m - playerEntry.getLastHealthTime() > 1000L || visibilityId != playerEntry.getRenderVisibilityId()) {
             playerEntry.setLastHealth(scoreValue);
-            playerEntry.setHealth(scoreValue);
+            playerEntry.setDisplayHealth(scoreValue);
             playerEntry.setLastHealthTime(m);
         }
 
-        playerEntry.setShowTime(showTime); // method_2964 = setRenderVisibilityId
-        playerEntry.setLastHealth(scoreValue); // method_2972 = setLastHealth
+        playerEntry.setRenderVisibilityId(visibilityId);
+        playerEntry.setLastHealth(scoreValue);
 
-        int health = playerEntry.getHealth(); // method_2960 = getDisplayHealth
+        int health = playerEntry.getDisplayHealth();
 
-        if (MathHelper.ceil((float) Math.max(scoreValue, health) / 2.0F) > 0) {
+        if (Mth.ceil((float) Math.max(scoreValue, health) / 2.0F) > 0) {
 
             if (scoreValue != HeartRenderer.previousHealthHud) {
                     HeartRenderer.tabHearts = calculateHearts(0, scoreValue, 20, 0);
@@ -124,20 +128,20 @@ public class HeartRenderer {
             health = Math.min(health, 20);
             scoreValue = Math.min(scoreValue, 20);
 
-            int heartCount = Math.max(MathHelper.ceil((float) (scoreValue / 2)), Math.max(MathHelper.ceil((float) (health / 2)), 10));
-            int spacingMultiplier = MathHelper.floor(Math.min((float) (xOffset - xPos - 4) / (float) heartCount, 9.0F));
+            int heartCount = Math.max(Mth.ceil((float) (scoreValue / 2)), Math.max(Mth.ceil((float) (health / 2)), 10));
+            int spacingMultiplier = Mth.floor(Math.min((float) (xOffset - xPos - 4) / (float) heartCount, 9.0F));
 
-            int ticks = MinecraftClient.getInstance().inGameHud.getTicks();
-            boolean highlight = playerEntry.getBlinkingHeartTime() > (long) ticks && (playerEntry.getBlinkingHeartTime() - (long) ticks) / 3L % 2L == 1L;
+            int ticks = minecraft.gui.getGuiTicks();
+            boolean highlight = playerEntry.getHealthBlinkTime() > (long) ticks && (playerEntry.getHealthBlinkTime() - (long) ticks) / 3L % 2L == 1L;
 
             RenderSystem.enableBlend();
-            RenderSystem.setShaderTexture(0, DrawableHelper.GUI_ICONS_TEXTURE);
+            RenderSystem.setShaderTexture(0, GuiComponent.GUI_ICONS_LOCATION);
             for (int i = 0; i < HeartRenderer.tabHearts.size(); i++) {
                 HeartIcon heart = HeartRenderer.tabHearts.get(i);
 
                 int xPosition = xPos + i % 10 * spacingMultiplier;
 
-                heart.render(matrixStack, xPosition, yPos, highlight, 0);
+                heart.render(poseStack, xPosition, yPos, highlight, 0);
             }
             RenderSystem.disableBlend();
         }
@@ -254,7 +258,7 @@ public class HeartRenderer {
                 }
             }
 
-            for (int i = 0; i < MathHelper.ceil(Math.min(maxHealth + absorption, 20) / 2.0F); i++) {
+            for (int i = 0; i < Mth.ceil(Math.min(maxHealth + absorption, 20) / 2.0F); i++) {
                 int value = i * 2 + 1;
 
                 if (value > (absorption + health)) {
@@ -371,7 +375,7 @@ public class HeartRenderer {
                 }
             }
         } else {
-            for (int i = 0; i < MathHelper.ceil(Math.min(maxHealth, 20) / 2.0F); i++) {
+            for (int i = 0; i < Mth.ceil(Math.min(maxHealth, 20) / 2.0F); i++) {
                 int value = i * 2 + 1;
 
                 if (value < topHealthRange) {
@@ -394,7 +398,7 @@ public class HeartRenderer {
             }
 
             if (absorption > 0) {
-                for (int i = 0; i < MathHelper.ceil(absorptionRange / 2.0F); i++) {
+                for (int i = 0; i < Mth.ceil(absorptionRange / 2.0F); i++) {
                     int value = i * 2 + 1;
 
                     if (absorptionColors == null) {

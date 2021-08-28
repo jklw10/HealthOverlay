@@ -12,7 +12,7 @@ import io.github.fablabsmc.fablabs.api.fiber.v1.serialization.JanksonValueSerial
 import io.github.fablabsmc.fablabs.api.fiber.v1.tree.*;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import terrails.healthoverlay.heart.ColoredHeart;
@@ -33,9 +33,9 @@ public class HealthOverlay implements ClientModInitializer {
     private static final JanksonValueSerializer CONFIG_SERIALIZER = new JanksonValueSerializer(false);
     private static final ConfigBranch CONFIG_NODE;
 
-    public static final Identifier HEALTH_ICONS_LOCATION = new Identifier("healthoverlay:textures/health.png");
-    public static final Identifier ABSORPTION_ICONS_LOCATION = new Identifier("healthoverlay:textures/absorption.png");
-    public static final Identifier HALF_HEART_ICONS_LOCATION = new Identifier("healthoverlay:textures/half_heart.png");
+    public static final ResourceLocation HEALTH_ICONS_LOCATION = new ResourceLocation("healthoverlay:textures/health.png");
+    public static final ResourceLocation ABSORPTION_ICONS_LOCATION = new ResourceLocation("healthoverlay:textures/absorption.png");
+    public static final ResourceLocation HALF_HEART_ICONS_LOCATION = new ResourceLocation("healthoverlay:textures/half_heart.png");
 
     private static final Runnable run;
 
@@ -170,7 +170,7 @@ public class HealthOverlay implements ClientModInitializer {
     private static ColoredHeart[] getColors(List<? extends String> stringValues, boolean absorption, boolean effect) {
         ColoredHeart[] colors;
         int offset;
-        if (absorption && effect && (stringValues.size() == 1 || stringValues.size() > 2)) {
+        if (absorption && effect && (stringValues.size() != 0 && stringValues.size() != 2)) {
             HealthOverlay.LOGGER.error("Absorption effect colors must either be empty or have 2 values.");
             throw new IllegalArgumentException(stringValues.toString());
         } else if (absorption && !effect && HealthOverlay.absorptionVanilla) {
