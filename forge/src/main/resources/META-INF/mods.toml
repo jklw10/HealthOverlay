@@ -1,0 +1,26 @@
+modLoader = "javafml"
+loaderVersion = "[37,)"
+issueTrackerURL = "https://github.com/Terrails/HealthOverlay/issues"
+license = "MIT"
+
+[[mods]]
+modId = "healthoverlay"
+version = "${version}"
+displayName = "Health Overlay"
+authors = "Terrails"
+description = ''' A simple renderer for colored hearts '''
+logoFile = "healthoverlay_icon.png"
+
+[[dependencies.healthoverlay]]
+modId = "forge"
+mandatory = true
+versionRange = "[37,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.healthoverlay]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.17.1,)"
+ordering = "NONE"
+side = "CLIENT"

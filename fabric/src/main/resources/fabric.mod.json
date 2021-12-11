@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "healthoverlay",
+  "version": "${version}",
+
+  "name": "Health Overlay",
+  "description": "A simple renderer for colored hearts",
+  "authors": [
+    "Terrails"
+  ],
+  "contact": {
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/health-overlay-fabric/",
+    "sources": "https://github.com/Terrails/HealthOverlay"
+  },
+
+  "license": "MIT",
+  "icon": "healthoverlay_icon.png",
+
+  "mixins": [
+    "healthoverlay.mixins.json",
+    "healthoverlay_common.mixins.json"
+  ],
+
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "terrails.healthoverlay.fabric.HealthOverlay"
+    ],
+    "modmenu": [
+      "terrails.healthoverlay.fabric.config.ConfigGuiCompat"
+    ]
+  },
+
+  "depends": {
+    "fabricloader": ">=0.11.6",
+    "fabric": "*",
+    "minecraft": ">=1.17.1",
+    "java": ">=16"
+  }
+}
