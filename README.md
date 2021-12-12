@@ -1,7 +1,9 @@
 # Health-Overlay
 Replacement for the default heart renderer with various configuration options and features
 
-CurseForge webpage containing downloads: https://www.curseforge.com/minecraft/mc-mods/health-overlay-fabric
+CurseForge webpage containing downloads:  
+Fabric: https://www.curseforge.com/minecraft/mc-mods/health-overlay-fabric  
+Forge: https://www.curseforge.com/minecraft/mc-mods/health-overlay
 
 ### Config Values
 
@@ -81,8 +83,7 @@ CurseForge webpage containing downloads: https://www.curseforge.com/minecraft/mc
 			       This means that health hearts will be hidden when absorption has 10 or more hearts.
 			         Example 1: If a player has 10 health (5 hearts), absorption will render itself in the last
 			                      five hearts and in case it is higher it will loop back over first five health hearts.
-			         Example 2: If a player has more than 20 absorption, second color is shown the same way as in "BEGINNING".
-			         Example 3: If player health is divisible by 20, absorption is shown the same way as in "BEGINNING".
+			         Example 2: If a player has more than 20 absorption, absorption is shown the same way as in "BEGINNING".
 			*/
 			"absorption_over_health_mode": "AFTER_HEALTH"
 		}
@@ -102,8 +103,8 @@ Visible in `src/main/resources/assets/healthoverlay/textures`
 - Absorption and health hearts colored via config values
 - First row of hearts is used in non-hardcore worlds and second row in hardcore worlds
     - From left to right: standard, poison, wither, frozen
-    - First row below is used to add an accent to the heart
+    - First row below hearts is used to add an accent
       - Non-hardcore is rendered with 216/255 RGBA transparency
       - Hardcore is rendered with '88/255' (absorption) & '178/255' (health) RGBA transparency  
-    - Second row below is used to add shading to the heart
+    - Second row below hearts is used to add shading
       - Rendered with '56/255' RGBA transparency, when withered '216/255'
