@@ -1,5 +1,6 @@
 package terrails.healthoverlay.fabric.config.entry;
 
+/*
 import com.mojang.blaze3d.vertex.PoseStack;
 import me.shedaniel.clothconfig2.gui.entries.AbstractTextFieldListListEntry;
 import me.shedaniel.clothconfig2.gui.widget.ColorDisplayWidget;
@@ -14,8 +15,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+*/
 
-public class ColorListEntry extends AbstractTextFieldListListEntry<String, ColorListEntry.ColorListCell, ColorListEntry> {
+public class ColorListEntry {} /*extends AbstractTextFieldListListEntry<String, ColorListEntry.ColorListCell, ColorListEntry> {
 
     private Integer min = null, max = null;
 
@@ -118,3 +120,4 @@ public class ColorListEntry extends AbstractTextFieldListListEntry<String, Color
         }
     }
 }
+*/

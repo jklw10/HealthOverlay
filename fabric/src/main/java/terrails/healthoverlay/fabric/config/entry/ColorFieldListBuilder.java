@@ -1,5 +1,6 @@
 package terrails.healthoverlay.fabric.config.entry;
 
+/*
 import me.shedaniel.clothconfig2.impl.builders.FieldBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TranslatableComponent;
@@ -10,8 +11,9 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+*/
 
-public class ColorFieldListBuilder extends FieldBuilder<List<Integer>, ColorListEntry> {
+public class ColorFieldListBuilder {} /*extends FieldBuilder<List<Integer>, ColorListEntry> {
 
     protected Function<String, Optional<Component>> cellErrorSupplier;
     private Consumer<List<String>> saveConsumer = null;
@@ -140,3 +142,4 @@ public class ColorFieldListBuilder extends FieldBuilder<List<Integer>, ColorList
         return entry;
     }
 }
+*/
