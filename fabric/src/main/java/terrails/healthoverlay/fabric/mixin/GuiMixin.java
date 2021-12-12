@@ -26,7 +26,7 @@ public abstract class GuiMixin {
         HeartRenderer.INSTANCE.renderPlayerHearts(poseStack, player);
     }
 
-    @ModifyVariable(method = "renderPlayerHealth", at = @At("STORE"), index = 15, ordinal = 7)
+    @ModifyVariable(method = "renderPlayerHealth", at = @At("STORE"), index = 17, ordinal = 9)
     private int modifyRows(int defaultValue) {
         return HOExpectPlatform.modifyStatusBarYPos(Mth.ceil(this.getCameraPlayer().getAbsorptionAmount()));
     }
