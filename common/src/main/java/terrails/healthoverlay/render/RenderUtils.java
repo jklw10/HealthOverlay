@@ -67,7 +67,6 @@ public class RenderUtils {
     }
 
     public static List<Heart> calculateHearts(int absorption, int health, int maxHealth, HeartType heartType) {
-        List<Heart> hearts = Lists.newArrayList();
         HeartPiece[] healthColors, absorptionColors; // Indices: 0 == Top row, 1 == Bottom row
 
         switch (heartType) {
@@ -93,198 +92,86 @@ public class RenderUtils {
                 absorptionColors = ModConfiguration.absorptionColors;
             }
         }
-
         // Health
-        if (health > 20) {
-            if ((health % 20) == 0) {
-                int var = (int) ((health - 1) / 20.0);
-                int index = var % healthColors.length;
-                healthColors = new HeartPiece[]{
-                        null,
-                        healthColors[index]
-                };
-            } else {
-                int var = (int) (health / 20.0);
-                healthColors = new HeartPiece[]{
-                        healthColors[var % healthColors.length],
-                        healthColors[(var - 1) % healthColors.length]
-                };
-            }
-        } else {
-            healthColors = new HeartPiece[]{
-                    null,
-                    healthColors[0]
-            };
-        }
+        int healthLayer = Math.max((int) ((health ) / 20.0) % healthColors.length -1,0) ;
+        
+        boolean skipTopHealthHeart = health % 20 == 0 || health < 20;
+        healthColors = new HeartPiece[]{
+                skipTopHealthHeart ? null : healthColors[healthLayer + 1],
+                healthColors[healthLayer]
+        };
 
         // Absorption
-        if (absorption > 20) {
-            if ((absorption % 20) == 0) {
-                // One heart color due to health being divisible by 20
-                int var = (int) ((absorption - 1) / 20.0);
-                int index = var % absorptionColors.length;
-                absorptionColors = new HeartPiece[]{
-                        null,
-                        absorptionColors[index]
-                };
-            } else {
-                // Two different heart colors due to health not being divisible by 20
-                int var = (int) (absorption / 20.0);
-                absorptionColors = new HeartPiece[]{
-                        absorptionColors[var % absorptionColors.length],
-                        absorptionColors[(var - 1) % absorptionColors.length]
-                };
-            }
-        } else if (absorption > 0) {
-            absorptionColors = new HeartPiece[]{
-                    null,
-                    absorptionColors[0]
-            };
-        }
-
+        int absorptionLayer = Math.max( (int) ((absorption) / 20.0 % absorptionColors.length)-1,0);
+        // One heart color due to health being divisible by 20 or below 20
+        boolean skipTopAbsorptionHeart = absorption % 20 == 0 || absorption < 20;
+        absorptionColors = new HeartPiece[]{
+                skipTopAbsorptionHeart ? null : absorptionColors[absorptionLayer+1],
+                absorptionColors[absorptionLayer]
+        };
+        //how many half harts needed to draw
         int healthRange = Math.min(health, 20);
-        int topHealthRange = health > 20 && (health % 20 != 0) ? (health % 20) : 0;
-
         int absorptionRange = Math.min(absorption, 20);
-        int topAbsorptionRange = absorption > 20 && (absorption % 20 != 0) ? (absorption % 20) : 0;
+        //how many hearts are ontop of layer below
+        int topHealthRange = skipTopHealthHeart ? 0 : (health % 20);
+        int topAbsorptionRange = skipTopAbsorptionHeart ? 0 : (absorption % 20);
+        
+        int healthHearts = Mth.ceil(maxHealth / 2.0F);
+        int absorptionHearts = Mth.ceil(absorptionRange / 2.0F);
+        //previously Mth.ceil(Math.min(maxHealth + absorption, 20) / 2.0F)
+        int bothHearts = Math.min(healthHearts+absorptionHearts,10);
 
-        if (ModConfiguration.absorptionOverHealth && absorption > 0) {
+        Heart[] hearts = new Heart[bothHearts];
 
-            ModConfiguration.AbsorptionMode mode = ModConfiguration.absorptionOverHealthMode;
-            if (health % 20 == 0 || absorption % 20 == 0 || absorption >= 20) {
-                mode = ModConfiguration.AbsorptionMode.BEGINNING;
-            }
-
-            int[] offsets = null;
-            if (mode == ModConfiguration.AbsorptionMode.AFTER_HEALTH) {
-                    // Get free space left after the highest health row
-                    int temp = 20 - (health % 20);
-
-                    // Get absorption that is left after free space is filled.
-                    // This should be added first due to it overflowing to the beginning.
-                    // Condition is to check if absorption is really overflowing, otherwise it should be skipped
-                    int var1 = absorption > temp ? absorptionRange - temp : 0;
-                    // Gets the absorption range after the highest health row
-                    int var2 = health > 20 ? (topHealthRange + absorptionRange) : (healthRange + absorptionRange);
-                    offsets = new int[]{var1, var2};
-                }
-
-            for (int i = 0; i < Mth.ceil(Math.min(maxHealth + absorption, 20) / 2.0F); i++) {
-                int value = i * 2 + 1;
-
-                // If value is higher than absorption or current health add heart containers to get to max health
-                if (value > (absorption + health)) {
-                    if (value < maxHealth) {
-                        hearts.add(Heart.CONTAINER_FULL);
-                    } else if (value == maxHealth) {
-                        hearts.add(Heart.CONTAINER_HALF);
-                    }
-                } else switch (mode) {
-                    case BEGINNING -> {
-                        if (value < topAbsorptionRange) {
-                            hearts.add(Heart.full(absorptionColors[0]));
-                        } else if (value == topAbsorptionRange) {
-                            hearts.add(Heart.full(absorptionColors[0], absorptionColors[1]));
-                        } else if (value < absorptionRange) {
-                            hearts.add(Heart.full(absorptionColors[1]));
-                        } else if (value == absorptionRange) {
-                            hearts.add(Heart.full(absorptionColors[1], healthColors[value + 1 <= topHealthRange ? 0 : 1]));
-                        } else if (value < topHealthRange) {
-                            hearts.add(Heart.full(healthColors[0]));
-                        } else if (value == topHealthRange) {
-                            hearts.add(Heart.full(healthColors[0], healthColors[1]));
-                        } else if (value < healthRange) {
-                            hearts.add(Heart.full(healthColors[1]));
-                        } else if (value == healthRange) {
-                            hearts.add(Heart.half(healthColors[1], value != maxHealth));
-                        }
-                    }
-                    case AFTER_HEALTH -> {
-                        if (value < topAbsorptionRange) {
-                            hearts.add(Heart.full(absorptionColors[0]));
-                        } else if (value == topAbsorptionRange) {
-                            hearts.add(Heart.full(absorptionColors[0], absorptionColors[1]));
-                        } else if (value < offsets[0]) {
-                            hearts.add(Heart.full(absorptionColors[1]));
-                        } else if (value == offsets[0]) {
-                            if (absorption >= 20) {
-                                hearts.add(Heart.full(absorptionColors[1]));
-                            } else hearts.add(Heart.full(absorptionColors[1], healthColors[value + 1 < topHealthRange ? 0 : 1]));
-                        } else if (value < topHealthRange) {
-                            hearts.add(Heart.full(healthColors[0]));
-                        } else if (value == topHealthRange) {
-                            if (value + 1 <= offsets[1]) {
-                                hearts.add(Heart.full(healthColors[0], absorptionColors[1]));
-                            } else hearts.add(Heart.full(healthColors[0], healthColors[1]));
-                        } else if (health > 20) {
-                            if (value < offsets[1]) {
-                                hearts.add(Heart.full(absorptionColors[1]));
-                            } else if (value == offsets[1]) {
-                                hearts.add(Heart.full(absorptionColors[1], healthColors[1]));
-                            } else if (value < healthRange) {
-                                hearts.add(Heart.full(healthColors[1]));
-                            } else if (value == healthRange) {
-                                hearts.add(Heart.full(healthColors[1], absorptionColors[1]));
-                            }
-                        } else {
-                            if (value < healthRange) {
-                                hearts.add(Heart.full(healthColors[1]));
-                            } else if (value == healthRange) {
-                                hearts.add(Heart.full(healthColors[1], absorptionColors[1]));
-                            } else if (value < offsets[1]) {
-                                hearts.add(Heart.full(absorptionColors[1]));
-                            } else if (value == offsets[1]) {
-                                hearts.add(Heart.half(absorptionColors[1], false));
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            for (int i = 0; i < Mth.ceil(Math.min(maxHealth, 20) / 2.0F); i++) {
-                int value = i * 2 + 1;
-
-                if (value < topHealthRange) {
-                    hearts.add(Heart.full(healthColors[0]));
-                } else if (value == topHealthRange) {
-                    hearts.add(Heart.full(healthColors[0], healthColors[1]));
-                } else if (value < healthRange) {
-                    hearts.add(Heart.full(healthColors[1]));
-                } else if (value == healthRange) {
-                    if (maxHealth > value) {
-                        hearts.add(Heart.half(healthColors[1], true));
-                    } else {
-                        hearts.add(Heart.half(healthColors[1], false));
-                    }
-                } else if (value < maxHealth) {
-                    hearts.add(Heart.CONTAINER_FULL);
-                } else if (value == maxHealth) {
-                    hearts.add(Heart.CONTAINER_HALF);
-                }
-            }
-
-            if (absorption > 0) {
-                for (int i = 0; i < Mth.ceil(absorptionRange / 2.0F); i++) {
-                    int value = i * 2 + 1;
-
-                    if (absorptionColors == null) {
-                        if (value < topAbsorptionRange || value < absorptionRange) {
-                            hearts.add(Heart.CONTAINER_FULL);
-                        } else if (value == topAbsorptionRange || value == absorptionRange) {
-                            hearts.add(Heart.CONTAINER_HALF);
-                        }
-                    } else if (value < topAbsorptionRange) {
-                        hearts.add(Heart.full(absorptionColors[0]));
-                    } else if (value == topAbsorptionRange) {
-                        hearts.add(Heart.full(absorptionColors[0], absorptionColors[1]));
-                    } else if (value < absorptionRange) {
-                        hearts.add(Heart.full(absorptionColors[1]));
-                    } else if (value == absorptionRange) {
-                        hearts.add(Heart.half(absorptionColors[1], false));
-                    }
-                }
-            }
+        ModConfiguration.AbsorptionMode mode = ModConfiguration.absorptionOverHealthMode;
+        if (health % 20 == 0 || absorption % 20 == 0 || absorption >= 20) {
+            mode = ModConfiguration.AbsorptionMode.BEGINNING;
         }
-        return hearts;
+
+        // Get free space left after the highest health row
+        int heartSpace = 20 - (health % 20);
+        // Get absorption that is left after free space is filled.
+        // This should be added first due to it overflowing to the beginning.
+        // Condition is to check if absorption is really overflowing, otherwise it should be skipped
+        boolean Wraps = absorption > heartSpace;
+        int firstAbsorptionRowStart = Wraps ? absorptionRange - heartSpace : 0;
+        // Gets the absorption range after the highest health row
+        int overflow = health > 20 ? (topHealthRange + absorptionRange) : (healthRange + absorptionRange);
+
+        HeartPiece firstHalf = null;
+        for (int i = 0; i < bothHearts*2; i++) {
+            boolean completesHeart = i % 2 != 0;
+            HeartPiece currentPiece = healthColors[1];
+            if(i >= (health % 20) && !skipTopHealthHeart){
+                currentPiece = healthColors[0];
+            }
+            if (mode == ModConfiguration.AbsorptionMode.BEGINNING)  {
+                if(i >= (absorption % 20) && !skipTopAbsorptionHeart){
+                    currentPiece = absorptionColors[0];
+                }
+                if(i >= topAbsorptionRange){
+                    currentPiece = absorptionColors[1];
+                }
+            }
+            if (mode == ModConfiguration.AbsorptionMode.AFTER_HEALTH)  {
+                if(Wraps){
+                    if(i < overflow){
+                        currentPiece = absorptionColors[0];
+                    }
+                    if(i >= firstAbsorptionRowStart){
+                        currentPiece = absorptionColors[1];
+                    }
+                }
+                
+            }
+            
+            if(!completesHeart){
+                firstHalf = currentPiece;
+                continue;
+            }
+            hearts[i/2] = Heart.full(firstHalf, currentPiece);
+        }
+    
+        return List.ArrayList(hearts);
     }
 }
